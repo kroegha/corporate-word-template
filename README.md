@@ -31,9 +31,16 @@ node scripts/verify-output.js acme
 `docx` is a dependency rather than a bundled copy, so the caller controls the
 version. The script exits with that instruction if it cannot resolve it.
 
-## Relationship to ddd-word-template
+## Branded siblings
 
-`ddd-word-template` is this generator with Digital Draft Dynamics as its default
-brand. `scripts/generate-document.js` and `scripts/verify-output.js` are kept
-identical in both, apart from the default brand id: change them here first, then
-copy across. Everything organisation-specific lives in `brands/`.
+A branded skill is this generator with its organisation's brand file as the
+default and nothing else changed. `scripts/generate-document.js` and
+`scripts/verify-output.js` stay identical across siblings apart from the default
+brand id: change them here first, then copy across. Everything
+organisation-specific belongs in `brands/`, never in the scripts.
+
+`ddd-word-template` (private) is the sibling this was extracted from.
+
+## Licence
+
+MIT. See LICENSE.
