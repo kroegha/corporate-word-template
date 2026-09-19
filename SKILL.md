@@ -1,6 +1,6 @@
 ---
 name: corporate-word-template
-description: Generates professional Word (.docx) documents from Markdown with a cover page, Document Control table, revision history, table of contents, styled tables and callouts, with all branding supplied as a JSON file so any organisation's colours, fonts, page size and company name can be used. Use this whenever a PRD, product requirements document, technical specification, project report, proposal, policy or any formal Word document is wanted, whenever someone asks to turn Markdown or notes into a Word document, and whenever a document must carry a specific company's branding. Pair it with a brand file per client or product line. For Digital Draft Dynamics documents, ddd-word-template is the same generator with that brand built in.
+description: Generates professional Word (.docx) documents from Markdown with a cover page, Document Control table, revision history, table of contents, styled tables and callouts, with all branding supplied as a JSON file so any organisation's colours, fonts, page size and company name can be used. Use this whenever a PRD, product requirements document, technical specification, project report, proposal, policy or any formal Word document is wanted, whenever someone asks to turn Markdown or notes into a Word document, and whenever a document must carry a specific company's branding. Pair it with a brand file per client or product line, and keep the brand file with the project so the same document renders the same way for anyone who builds it.
 ---
 
 # Corporate Word Document Generator
@@ -74,9 +74,20 @@ a document is rendered.
 
 ## Writing the body
 
-Plain Markdown: `#` to `####` headings, paragraphs, `-` bullets (indent for a
-second level), `1.` numbered lists, `|` pipe tables, `---` for a page break, `>`
-for a callout box, and inline `**bold**`, `*italic*` and `` `code` ``.
+Plain Markdown. Blocks: `#` to `####` headings, paragraphs, `-` bullets (indent
+for a second level), `1.` numbered lists, `|` pipe tables, `>` callouts (several
+consecutive `>` lines become one callout), and `---` for a page break.
+
+Inline, anywhere including headings, table headers and callouts: `**bold**`,
+`__bold__`, `*italic*`, `_italic_`, `***bold italic***`, `` `code` ``,
+`<u>underline</u>`, `~~strikethrough~~` and `[text](https://example.com)`.
+Emphasis needs a non-space just inside the marks, so `2 * 3 * 4` and
+`snake_case_name` are left alone.
+
+Body paragraphs are justified. A brand can set `"body": { "align": "left" }` to
+turn that off. Each numbered list restarts at 1, and a `---` that would produce a
+blank page is ignored; `"markdown": { "hrMeans": "nothing" }` makes `---` purely
+decorative.
 
 Number your own section headings (`## 1. Introduction`) — the template does not
 number them, so what you write is what appears.
@@ -123,7 +134,9 @@ Builder methods: `heading(text, level)`, `paragraph(text)`, `bullet(text, level)
 - `references/style-guide.md` — what each style decision is for
 - `references/document-patterns.md` — section skeletons per document type
 
-## Related
+## Branded siblings
 
-`ddd-word-template` is this generator with Digital Draft Dynamics as the default
-brand. Keep the two generators identical: change this one, then copy across.
+A branded skill is this generator with an organisation's brand file as its
+default and nothing else changed. Keep the generator identical across siblings:
+change it here, then copy across. Everything organisation-specific belongs in
+`brands/`, never in the scripts.

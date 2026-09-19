@@ -2,7 +2,8 @@
  * Corporate Word document generator.
  *
  * Styling comes from a brand file (brands/<id>.json), so the same generator
- * produces any organisation's document with no change to this file. A neutral brand is the default; copy brands/neutral.json to add your own.
+ * produces any organisation's document with no change to this file. The neutral
+ * brand is the default; copy brands/neutral.json to add your own.
  *
  *   node generate-document.js --input body.md --output prd.docx \
  *        --title "Widget PRD" --product "Widget" --version 1.0
@@ -33,7 +34,8 @@ try {
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   Header, Footer, AlignmentType, HeadingLevel, BorderStyle, WidthType,
-  LevelFormat, PageBreak, ShadingType, PageNumber, TableOfContents
+  LevelFormat, PageBreak, ShadingType, PageNumber, TableOfContents, ImageRun,
+  ExternalHyperlink
 } = docx;
 
 const BRAND_DIR = path.join(__dirname, '..', 'brands');
@@ -99,7 +101,25 @@ class DocBuilder {
   }
 
   spacer(before) { this.children.push(new Paragraph({ spacing: { before }, children: [] })); return this; }
-  pageBreak() { this.children.push(new Paragraph({ children: [new PageBreak()] })); return this; }
+
+  /** Centred image, sized in pixels. Used for a brand's logo on the cover. */
+  logo(imagePath, widthPx, heightPx) {
+    const ext = path.extname(imagePath).slice(1).toLowerCase();
+    this.children.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new ImageRun({
+        type: ext === 'jpg' ? 'jpeg' : ext,
+        data: fs.readFileSync(imagePath),
+        transformation: { width: widthPx, height: heightPx },
+      })],
+    }));
+    return this;
+  }
+  pageBreak() {
+    this.mark('pagebreak');
+    this.children.push(new Paragraph({ children: [new PageBreak()] }));
+    return this;
+  }
 
   centred(text, { size, color, bold = false, italics = false, before } = {}) {
     this.children.push(new Paragraph({
@@ -112,35 +132,70 @@ class DocBuilder {
 
   heading(text, level = 1) {
     const levels = [HeadingLevel.HEADING_1, HeadingLevel.HEADING_2, HeadingLevel.HEADING_3, HeadingLevel.HEADING_4];
-    this.children.push(new Paragraph({ heading: levels[level - 1], children: [new TextRun({ text, bold: true })] }));
+    this.mark('heading');
+    this.children.push(new Paragraph({
+      heading: levels[level - 1],
+      children: this.inlineRuns(text, { bold: true, size: this.s[`heading${level}`] }),
+    }));
     return this;
   }
 
+  /** Body alignment is a brand decision: "justified" (default) or "left". */
+  get bodyAlignment() {
+    const choice = (this.brand.body && this.brand.body.align) || 'justified';
+    return choice === 'left' ? AlignmentType.LEFT : AlignmentType.JUSTIFIED;
+  }
+
   paragraph(text, opts = {}) {
+    this.mark('paragraph');
     this.children.push(new Paragraph({
       spacing: { after: this.sp.bodyAfter },
+      alignment: this.bodyAlignment,
       ...opts,
       children: this.inlineRuns(text),
     }));
     return this;
   }
 
+  /** Remembers what was emitted last, so a new numbered list can restart at 1. */
+  mark(kind) { this.lastBlock = kind; return this; }
+
+  // A little space after each item, so the paragraph following a list does not
+  // butt against its last line.
   bullet(text, level = 0) {
-    this.children.push(new Paragraph({ numbering: { reference: 'bullet-list', level }, children: this.inlineRuns(text) }));
+    this.mark('bullet');
+    this.children.push(new Paragraph({
+      numbering: { reference: 'bullet-list', level },
+      spacing: { after: Math.round(this.sp.bodyAfter / 2) },
+      children: this.inlineRuns(text),
+    }));
     return this;
   }
 
+  /**
+   * Word continues one counter across every list that shares a numbering
+   * instance, so the fourth list in a document would start at wherever the third
+   * ended. A numbered item that does not directly follow another one starts a
+   * new instance, which restarts it at 1.
+   */
   numbered(text, level = 0) {
-    this.children.push(new Paragraph({ numbering: { reference: 'numbered-list', level }, children: this.inlineRuns(text) }));
+    if (this.lastBlock !== 'numbered') this.numberedInstance = (this.numberedInstance || 0) + 1;
+    this.mark('numbered');
+    this.children.push(new Paragraph({
+      numbering: { reference: 'numbered-list', level, instance: this.numberedInstance },
+      spacing: { after: Math.round(this.sp.bodyAfter / 2) },
+      children: this.inlineRuns(text),
+    }));
     return this;
   }
 
-  /** Yellow callout for something the reader must not miss. */
+  /** Shaded callout for something the reader must not miss. */
   note(text) {
+    this.mark('note');
     this.children.push(new Paragraph({
       shading: { fill: this.b.noteBackground, type: ShadingType.CLEAR },
       spacing: { before: this.sp.noteBeforeAfter, after: this.sp.noteBeforeAfter },
-      children: [new TextRun({ text, bold: true, color: this.b.noteText, font: this.font })],
+      children: this.inlineRuns(text, { bold: true, color: this.b.noteText }),
     }));
     return this;
   }
@@ -157,7 +212,7 @@ class DocBuilder {
       margins: this.cellMargins,
       children: [new Paragraph({
         children: header
-          ? [new TextRun({ text, bold: true, color: this.b.tableHeaderText, size: this.s.table, font: this.font })]
+          ? this.inlineRuns(text, { bold: true, color: this.b.tableHeaderText, size: this.s.table })
           : this.inlineRuns(text, { size: this.s.table }),
       })],
     });
@@ -165,27 +220,65 @@ class DocBuilder {
     rows.slice(1).forEach((row, r) => {
       built.push(new TableRow({ children: row.map((t, i) => cell(t, cols[i], { alt: r % 2 === 1 })) }));
     });
+    this.mark('table');
     this.children.push(new Table({ columnWidths: cols, rows: built }));
     this.spacer(200);
     return this;
   }
 
-  /** **bold**, *italic*, `code` inside a line of text. */
+  /**
+   * Inline markdown inside a line: ***bold italic***, **bold**, __bold__,
+   * `code`, <u>underline</u>, ~~strike~~, [text](url), *italic*, _italic_.
+   *
+   * Order matters, so the rules are tried longest-delimiter first. The emphasis
+   * rules require a non-space just inside the delimiters and a non-word
+   * character just outside, which is what stops `2 * 3 * 4` becoming italic and
+   * `snake_case_name` losing its middle.
+   */
   inlineRuns(text, extra = {}) {
-    const runs = [];
-    const re = /(\*\*.+?\*\*|`[^`\n]+`|\*.+?\*)/gs;
-    let last = 0, m;
-    const plain = (t) => { if (t) runs.push(new TextRun({ text: t, size: this.s.body, font: this.font, ...extra })); };
-    while ((m = re.exec(String(text))) !== null) {
-      plain(String(text).slice(last, m.index));
-      const tok = m[0];
-      if (tok.startsWith('**')) runs.push(new TextRun({ text: tok.slice(2, -2), bold: true, size: this.s.body, font: this.font, ...extra }));
-      else if (tok.startsWith('`')) runs.push(new TextRun({ text: tok.slice(1, -1), font: this.brand.fonts.code, color: this.b.inlineCode, size: this.s.code, ...extra }));
-      else runs.push(new TextRun({ text: tok.slice(1, -1), italics: true, size: this.s.body, font: this.font, ...extra }));
-      last = m.index + tok.length;
+    const RULES = [
+      { re: /\*\*\*(?!\s)([^*\n]+?)(?<!\s)\*\*\*/,                    style: { bold: true, italics: true } },
+      { re: /(?<![\w_])___(?!\s)([^_\n]+?)(?<!\s)___(?![\w_])/,       style: { bold: true, italics: true } },
+      { re: /\*\*(?!\s)([^*\n]+?)(?<!\s)\*\*/,                        style: { bold: true } },
+      { re: /(?<![\w_])__(?!\s)([^_\n]+?)(?<!\s)__(?![\w_])/,         style: { bold: true } },
+      { re: /`([^`\n]+)`/,                                            code: true },
+      { re: /<u>([\s\S]*?)<\/u>/i,                                    style: { underline: {} } },
+      { re: /~~(?!\s)([^~\n]+?)(?<!\s)~~/,                            style: { strike: true } },
+      { re: /\[([^\]\n]+)\]\(([^)\s]+)\)/,                            link: true },
+      { re: /(?<![\w*])\*(?!\s)([^*\n]+?)(?<!\s)\*(?![\w*])/,         style: { italics: true } },
+      { re: /(?<![\w_])_(?!\s)([^_\n]+?)(?<!\s)_(?![\w_])/,           style: { italics: true } },
+    ];
+
+    const children = [];
+    const base = { size: this.s.body, font: this.font, ...extra };
+    const plain = (t) => { if (t) children.push(new TextRun({ text: t, ...base })); };
+
+    let rest = String(text);
+    while (rest) {
+      // Earliest match wins; ties go to the rule listed first, which is the longer delimiter.
+      let best = null;
+      for (const rule of RULES) {
+        const m = rule.re.exec(rest);
+        if (m && (!best || m.index < best.m.index)) best = { rule, m };
+      }
+      if (!best) break;
+
+      plain(rest.slice(0, best.m.index));
+      const { rule, m } = best;
+      if (rule.code) {
+        children.push(new TextRun({ text: m[1], font: this.brand.fonts.code, color: this.b.inlineCode, size: this.s.code, ...extra }));
+      } else if (rule.link) {
+        children.push(new ExternalHyperlink({
+          link: m[2],
+          children: [new TextRun({ text: m[1], color: this.b.hyperlink, underline: {}, ...base })],
+        }));
+      } else {
+        children.push(new TextRun({ text: m[1], ...base, ...rule.style }));
+      }
+      rest = rest.slice(best.m.index + m[0].length);
     }
-    plain(String(text).slice(last));
-    return runs.length ? runs : [new TextRun({ text: '', font: this.font, ...extra })];
+    plain(rest);
+    return children.length ? children : [new TextRun({ text: '', ...base })];
   }
 }
 
@@ -203,12 +296,33 @@ function buildFromMarkdown(builder, markdown) {
   while (i < lines.length) {
     const t = lines[i].trim();
     if (t === '') { flush(); i++; continue; }
-    if (/^---+$/.test(t)) { flush(); builder.pageBreak(); i++; continue; }
+    // Many documents use --- as a visual separator rather than a page break.
+    // "pagebreak" (default) honours it, but never twice in a row and never on an
+    // empty document, because either produces a blank page.
+    if (/^---+$/.test(t)) {
+      flush();
+      const means = (builder.brand.markdown && builder.brand.markdown.hrMeans) || 'pagebreak';
+      if (means === 'pagebreak' && builder.children.length && builder.lastBlock !== 'pagebreak') {
+        builder.pageBreak();
+      }
+      i++;
+      continue;
+    }
 
     const h = t.match(/^(#{1,4})\s+(.*)$/);
     if (h) { flush(); builder.heading(h[2], h[1].length); i++; continue; }
 
-    if (t.startsWith('>')) { flush(); builder.note(t.replace(/^>\s?/, '')); i++; continue; }
+    // A callout wrapped over several source lines is one callout, not one per line.
+    if (t.startsWith('>')) {
+      flush();
+      const quoted = [];
+      while (i < lines.length && lines[i].trim().startsWith('>')) {
+        quoted.push(lines[i].trim().replace(/^>\s?/, ''));
+        i++;
+      }
+      builder.note(quoted.join(' ').trim());
+      continue;
+    }
 
     if (t.startsWith('|') && i + 1 < lines.length && /^\|[\s:|-]+\|?\s*$/.test(lines[i + 1].trim())) {
       flush();
@@ -238,11 +352,26 @@ function buildFromMarkdown(builder, markdown) {
 function coverPage(b) {
   const { config: c, brand } = b;
   const org = brand.organisation;
-  b.spacer(b.sp.coverTopSpace);
+  const logo = brand.assets && brand.assets.logo;
+  if (logo) {
+    const file = path.isAbsolute(logo) ? logo : path.join(__dirname, '..', logo);
+    if (fs.existsSync(file)) {
+      b.spacer(Math.round(b.sp.coverTopSpace / 3));
+      const width = (brand.assets.logoWidthPx) || 90;
+      b.logo(file, width, Math.round(width * (brand.assets.logoRatio || 1)));
+      b.spacer(b.sp.coverMediumSpace);   // the mark should not sit on the title
+    } else {
+      console.warn(`Brand logo not found, cover rendered without it: ${file}`);
+      b.spacer(b.sp.coverTopSpace);
+    }
+  } else {
+    b.spacer(b.sp.coverTopSpace);
+  }
   b.centred(c.documentType, { size: b.s.coverTitle, color: b.b.coverTitle, bold: true });
   b.spacer(b.sp.coverSectionSpace);
   b.centred(c.product || c.title, { size: b.s.coverProduct, color: b.b.coverProduct, bold: true });
-  if (c.tagline) b.centred(c.tagline, { color: b.b.coverSubtitle, before: b.sp.coverSmallSpace });
+  const tagline = c.tagline || org.tagline;
+  if (tagline) b.centred(tagline, { color: b.b.coverSubtitle, before: b.sp.coverSmallSpace });
   if (c.specType || c.edition) {
     b.spacer(b.sp.coverMediumSpace);
     if (c.specType) b.centred(c.specType, { size: b.s.coverSpec, color: b.b.coverSpec });
