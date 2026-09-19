@@ -1,0 +1,83 @@
+{
+  "id": "neutral",
+  "organisation": {
+    "legalName": "Your Organisation",
+    "tradingPrefix": "t/a",
+    "classification": "",
+    "headerTemplate": "{title} | {legalName}",
+    "footerTemplate": "Page {page} of {pages}"
+  },
+  "page": {
+    "size": "Letter",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "fonts": {
+    "primary": "Calibri",
+    "code": "Consolas"
+  },
+  "colors": {
+    "heading1": "222222",
+    "heading2": "444444",
+    "heading3": "444444",
+    "heading4": "444444",
+    "tableHeader": "222222",
+    "tableHeaderText": "FFFFFF",
+    "tableRowAlt": "F4F4F4",
+    "tableRowNormal": "FFFFFF",
+    "tableBorder": "CCCCCC",
+    "headerFooter": "767676",
+    "hyperlink": "0563C1",
+    "noteBackground": "F4F4F4",
+    "noteText": "222222",
+    "coverTitle": "222222",
+    "coverProduct": "444444",
+    "coverSubtitle": "666666",
+    "coverSpec": "666666",
+    "coverEdition": "767676",
+    "confidential": "B00020",
+    "inlineCode": "B00020"
+  },
+  "sizes": {
+    "coverTitle": 48,
+    "coverProduct": 44,
+    "coverSpec": 28,
+    "coverText": 24,
+    "coverTrading": 22,
+    "confidential": 20,
+    "heading1": 32,
+    "heading2": 28,
+    "heading3": 24,
+    "heading4": 22,
+    "body": 22,
+    "table": 20,
+    "headerFooter": 18,
+    "code": 18
+  },
+  "spacing": {
+    "heading1Before": 400,
+    "heading1After": 200,
+    "heading2Before": 300,
+    "heading2After": 150,
+    "heading3Before": 250,
+    "heading3After": 100,
+    "heading4Before": 200,
+    "heading4After": 80,
+    "bodyAfter": 120,
+    "noteBeforeAfter": 150,
+    "tableCellTop": 80,
+    "tableCellLeft": 120,
+    "tableCellBottom": 80,
+    "tableCellRight": 120,
+    "coverTopSpace": 1800,
+    "coverSectionSpace": 500,
+    "coverSmallSpace": 100,
+    "coverMediumSpace": 300,
+    "coverConfidentialSpace": 400,
+    "coverTradingSpace": 50
+  }
+}

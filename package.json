@@ -1,0 +1,13 @@
+{
+  "name": "corporate-word-template",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Brand-driven corporate Word document generator; branding supplied as JSON",
+  "main": "scripts/generate-document.js",
+  "scripts": {
+    "verify": "node scripts/verify-output.js"
+  },
+  "dependencies": {
+    "docx": "^9.5.1"
+  }
+}
