@@ -30,7 +30,7 @@ node scripts/generate-document.js \
 
 `--help` lists every flag. The common ones: `--type` (the line above the product
 name on the cover), `--tagline`, `--trading-name`, `--status`, `--purpose`,
-`--scope`, `--audience`, `--note` (a yellow callout), and `--no-front-matter` to
+`--scope`, `--audience`, `--note` (a shaded callout in the brand colours), and `--no-front-matter` to
 start straight at the body.
 
 ## Make a brand for the organisation
