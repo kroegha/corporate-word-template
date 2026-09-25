@@ -1,0 +1,7 @@
+{
+  "_comment": "Starter policy. Rule 1 (orphaned relationships and media) always runs and needs nothing here. Add tokens to have OCR flag text that should never appear in an embedded image, allow_sha256 for your own logos and letterheads that legitimately contain them, and block_sha256 for an image that must never come back.",
+  "tokens": [],
+  "allow_sha256": {},
+  "block_sha256": {},
+  "block_sizes": {}
+}

@@ -140,3 +140,22 @@ A branded skill is this generator with an organisation's brand file as its
 default and nothing else changed. Keep the generator identical across siblings:
 change it here, then copy across. Everything organisation-specific belongs in
 `brands/`, never in the scripts.
+
+## Before returning a Word document
+
+A Word package keeps an image after the picture that drew it is deleted: the media
+part and its relationship stay, invisible on the page but extractable by anyone who
+unzips the file. That is how one client's architecture diagram reached documents
+written for other clients.
+
+Run both scripts over every `.docx` this skill produces, before it goes anywhere:
+
+```bash
+python scripts/strip_orphans.py <output.docx>           # removes what nothing references
+python scripts/check_package_hygiene.py <output.docx>   # exits 1 if anything is wrong
+```
+
+`strip_orphans.py` only removes parts nothing references, so the rendered document
+cannot change. `check_package_hygiene.py` reads `scripts/package-hygiene.json`, which
+holds the tokens to look for, the images allowed to contain them, and any image that
+must never appear. Edit the policy, not the script.

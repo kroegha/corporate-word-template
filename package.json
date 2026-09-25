@@ -1,6 +1,6 @@
 {
   "name": "corporate-word-template",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "MIT",
   "description": "Brand-driven corporate Word document generator; branding supplied as JSON",
   "main": "scripts/generate-document.js",
