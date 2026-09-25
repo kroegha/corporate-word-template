@@ -12,7 +12,7 @@ orients someone opening the repository.
 | Path | Holds |
 |---|---|
 | `SKILL.md` | How to run the generator, make a brand, and write the body |
-| `brands/neutral.json` | Neutral default, and the template for a new brand |
+| `brands/neutral.json` | Neutral default, and the template for a new brand. Calibri for body and headings, Consolas for code, in a greyscale palette so it carries no one's branding until you set yours |
 | `scripts/generate-document.js` | Generator, CLI and programmatic API |
 | `scripts/verify-output.js` | Validates a brand file, then reads the rendered document back and checks it |
 | `scripts/style-constants.js` | Brand values in an older `V2.colors.x` shape |
